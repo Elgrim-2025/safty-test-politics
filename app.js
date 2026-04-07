@@ -59,7 +59,7 @@ window.ecs.ready().then(() => {
       premultipliedAlpha: false,
     })
 
-    const geometry = new THREE.PlaneGeometry(1.5, 1.5)
+    const geometry = new THREE.PlaneGeometry(3, 3)
     const mesh = new THREE.Mesh(geometry, material)
 
     // 바닥 기준 위치 (y=0.75 = 패널 중심, z=-2 = 카메라 앞 2m)
@@ -78,13 +78,15 @@ window.ecs.ready().then(() => {
       camDir.y = 0
       camDir.normalize()
       mesh.position.set(
-        camPos.x + camDir.x * 2,
-        0.75,
-        camPos.z + camDir.z * 2
+        camPos.x + camDir.x * 4,
+        1.5,
+        camPos.z + camDir.z * 4
       )
     }
 
-    placeInFront() // 시작 시 바로 배치
+    mesh.visible = false
+    let placed = false
+    const hint = document.getElementById('ui-hint')
 
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length === 2) {
@@ -107,6 +109,11 @@ window.ecs.ready().then(() => {
     document.addEventListener('touchend', (e) => {
       if (e.touches.length === 0) lastPinchDist = null
       if (e.touches.length === 0 && e.changedTouches.length === 1) {
+        if (!placed) {
+          placed = true
+          mesh.visible = true
+          hint.classList.add('hidden')
+        }
         placeInFront()
       }
     }, { passive: true })
