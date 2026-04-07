@@ -78,9 +78,9 @@ window.ecs.ready().then(() => {
       camDir.y = 0
       camDir.normalize()
       mesh.position.set(
-        camPos.x + camDir.x * 4,
+        camPos.x + camDir.x * 8,
         1.5,
-        camPos.z + camDir.z * 4
+        camPos.z + camDir.z * 8
       )
     }
 
