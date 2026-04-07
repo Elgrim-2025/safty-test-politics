@@ -56,11 +56,11 @@ window.ecs.ready().then(() => {
       mesh.visible = false
       world.three.scene.add(mesh)
 
-      const camera = world.three.activeCamera
       const hint = document.getElementById('ui-hint')
       let lastPinchDist = null
 
       const placeInFront = () => {
+        const camera = world.three.activeCamera
         const camPos = new THREE.Vector3()
         const camDir = new THREE.Vector3()
         camera.getWorldPosition(camPos)
