@@ -81,11 +81,17 @@ window.ecs.ready().then(() => {
 
       const placeInFront = () => {
         const camera = world.three.activeCamera
+        const camPos = new THREE.Vector3()
         const camDir = new THREE.Vector3()
+        camera.getWorldPosition(camPos)
         camera.getWorldDirection(camDir)
         camDir.y = 0
         camDir.normalize()
-        fixedDir = camDir.clone()
+        fixedPos = new THREE.Vector3(
+          camPos.x + camDir.x * 15,
+          1.5,
+          camPos.z + camDir.z * 15
+        )
       }
 
       document.addEventListener('touchstart', (e) => {
@@ -119,19 +125,13 @@ window.ecs.ready().then(() => {
       }, { passive: true })
     }
 
-    if (mesh && mesh.visible && fixedDir) {
+    if (mesh && mesh.visible && fixedPos) {
+      mesh.position.copy(fixedPos)
+
+      // 빌보드: y축만 카메라 향하게
       const camera = world.three.activeCamera
       const camPos = new THREE.Vector3()
       camera.getWorldPosition(camPos)
-
-      // 카메라 기준 상대 위치로 매 프레임 고정 → 흔들림 상쇄
-      mesh.position.set(
-        camPos.x + fixedDir.x * 15,
-        1.5,
-        camPos.z + fixedDir.z * 15
-      )
-
-      // 빌보드: y축만 카메라 향하게
       const lookTarget = camPos.clone()
       lookTarget.y = mesh.position.y
       mesh.lookAt(lookTarget)
