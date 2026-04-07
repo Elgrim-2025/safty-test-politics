@@ -3,9 +3,45 @@ let mesh = null
 let placed = false
 let fixedPos = null
 
+const smoothPos = { x: 0, y: 0, z: 0 }
+const smoothQuat = { x: 0, y: 0, z: 0, w: 1 }
+let camReady = false
+const SMOOTH = 0.05
+
 window.ecs.ready().then(() => {
   window.ecs.registerBehavior((world) => {
     const THREE = window.THREE
+    const camera = world.three.activeCamera
+
+    // 카메라 스무딩 (매 프레임)
+    const rawPos = new THREE.Vector3()
+    const rawQuat = new THREE.Quaternion()
+    camera.getWorldPosition(rawPos)
+    camera.getWorldQuaternion(rawQuat)
+
+    if (!camReady) {
+      smoothPos.x = rawPos.x; smoothPos.y = rawPos.y; smoothPos.z = rawPos.z
+      smoothQuat.x = rawQuat.x; smoothQuat.y = rawQuat.y
+      smoothQuat.z = rawQuat.z; smoothQuat.w = rawQuat.w
+      camReady = true
+    } else {
+      smoothPos.x += (rawPos.x - smoothPos.x) * SMOOTH
+      smoothPos.y += (rawPos.y - smoothPos.y) * SMOOTH
+      smoothPos.z += (rawPos.z - smoothPos.z) * SMOOTH
+      const dot = smoothQuat.x*rawQuat.x + smoothQuat.y*rawQuat.y + smoothQuat.z*rawQuat.z + smoothQuat.w*rawQuat.w
+      const sx = dot < 0 ? -rawQuat.x : rawQuat.x
+      const sy = dot < 0 ? -rawQuat.y : rawQuat.y
+      const sz = dot < 0 ? -rawQuat.z : rawQuat.z
+      const sw = dot < 0 ? -rawQuat.w : rawQuat.w
+      smoothQuat.x += (sx - smoothQuat.x) * SMOOTH
+      smoothQuat.y += (sy - smoothQuat.y) * SMOOTH
+      smoothQuat.z += (sz - smoothQuat.z) * SMOOTH
+      smoothQuat.w += (sw - smoothQuat.w) * SMOOTH
+      const len = Math.hypot(smoothQuat.x, smoothQuat.y, smoothQuat.z, smoothQuat.w)
+      smoothQuat.x /= len; smoothQuat.y /= len; smoothQuat.z /= len; smoothQuat.w /= len
+      camera.position.set(smoothPos.x, smoothPos.y, smoothPos.z)
+      camera.quaternion.set(smoothQuat.x, smoothQuat.y, smoothQuat.z, smoothQuat.w)
+    }
 
     if (!initialized) {
       initialized = true
