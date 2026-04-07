@@ -66,22 +66,48 @@ window.ecs.ready().then(() => {
     mesh.position.set(0, 0.75, -2)
     world.three.scene.add(mesh)
 
-    // --- 터치한 바닥 위치로 재소환 ---
+    // --- 터치: 카메라 앞 고정 거리에 재소환 + 핀치 크기 조절 ---
     const camera = world.three.activeCamera
-    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-    const raycaster = new THREE.Raycaster()
+    let lastPinchDist = null
+
+    const placeInFront = () => {
+      const camPos = new THREE.Vector3()
+      const camDir = new THREE.Vector3()
+      camera.getWorldPosition(camPos)
+      camera.getWorldDirection(camDir)
+      camDir.y = 0
+      camDir.normalize()
+      mesh.position.set(
+        camPos.x + camDir.x * 2,
+        0.75,
+        camPos.z + camDir.z * 2
+      )
+    }
+
+    placeInFront() // 시작 시 바로 배치
+
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        lastPinchDist = Math.hypot(dx, dy)
+      }
+    }, { passive: true })
+
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && lastPinchDist !== null) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        const dist = Math.hypot(dx, dy)
+        mesh.scale.multiplyScalar(dist / lastPinchDist)
+        lastPinchDist = dist
+      }
+    }, { passive: true })
 
     document.addEventListener('touchend', (e) => {
-      if (e.changedTouches.length !== 1) return
-      const touch = e.changedTouches[0]
-      const ndc = new THREE.Vector2(
-        (touch.clientX / window.innerWidth) * 2 - 1,
-        -(touch.clientY / window.innerHeight) * 2 + 1
-      )
-      raycaster.setFromCamera(ndc, camera)
-      const hit = new THREE.Vector3()
-      if (raycaster.ray.intersectPlane(floorPlane, hit)) {
-        mesh.position.set(hit.x, 0.75, hit.z)
+      if (e.touches.length === 0) lastPinchDist = null
+      if (e.touches.length === 0 && e.changedTouches.length === 1) {
+        placeInFront()
       }
     }, { passive: true })
   })
