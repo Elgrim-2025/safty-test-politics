@@ -100,7 +100,7 @@ window.ecs.ready().then(() => {
         premultipliedAlpha: false,
       })
 
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), material)
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), material)
       mesh.visible = false
       world.three.scene.add(mesh)
 
