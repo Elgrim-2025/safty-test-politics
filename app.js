@@ -45,9 +45,6 @@ window.ecs.ready().then(() => {
     if (!initialized) {
       initialized = true
 
-      const renderer = world.three.renderer
-      renderer.setClearColor(0x000000, 0)
-
       const video = document.createElement('video')
       video.src = 'assets/output-example-alpha.webm'
       video.loop = true
