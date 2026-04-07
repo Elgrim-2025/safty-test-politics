@@ -1,7 +1,6 @@
 let initialized = false
 let mesh = null
 let placed = false
-const targetPos = new (window.THREE ? window.THREE.Vector3 : Object)()
 
 window.ecs.ready().then(() => {
   window.ecs.registerBehavior((world) => {
@@ -70,10 +69,10 @@ window.ecs.ready().then(() => {
         camera.getWorldDirection(camDir)
         camDir.y = 0
         camDir.normalize()
-        targetPos.set(
-          camPos.x + camDir.x * 8,
+        mesh.position.set(
+          camPos.x + camDir.x * 15,
           1.5,
-          camPos.z + camDir.z * 8
+          camPos.z + camDir.z * 15
         )
       }
 
@@ -108,9 +107,5 @@ window.ecs.ready().then(() => {
       }, { passive: true })
     }
 
-    // --- 매 프레임: lerp로 흔들림 완화 ---
-    if (mesh && mesh.visible) {
-      mesh.position.lerp(targetPos, 0.05)
-    }
   })
 })
