@@ -7,18 +7,24 @@ window.ecs.ready().then(() => {
 
     const THREE = window.THREE
 
-    // --- 비디오 ---
+    // --- 비디오 (소리 포함, 첫 터치 시 재생) ---
     const video = document.createElement('video')
     video.src = 'assets/output-example-alpha.webm'
-    video.autoplay = true
     video.loop = true
-    video.muted = true
+    video.muted = true   // 자동재생 정책 때문에 처음엔 muted로 시작
     video.playsInline = true
     video.crossOrigin = 'anonymous'
     document.body.appendChild(video)
     video.play()
 
-    // --- 크로마키 셰이더 (초록색 제거) ---
+    // 첫 터치 때 소리 활성화 (브라우저 자동재생 정책)
+    const enableAudio = () => {
+      video.muted = false
+      document.removeEventListener('touchstart', enableAudio)
+    }
+    document.addEventListener('touchstart', enableAudio, { once: true })
+
+    // --- 알파채널 WebM: 영상 자체 알파 사용 (크로마키 불필요) ---
     const vertexShader = `
       varying vec2 vUv;
       void main() {
@@ -28,41 +34,29 @@ window.ecs.ready().then(() => {
     `
     const fragmentShader = `
       uniform sampler2D map;
-      uniform vec3 keyColor;
-      uniform float similarity;
-      uniform float smoothness;
       varying vec2 vUv;
-
       void main() {
         vec4 col = texture2D(map, vUv);
-        // YCbCr 색공간에서 크로마 거리 계산
-        float Cb1 = -0.169 * keyColor.r - 0.331 * keyColor.g + 0.500 * keyColor.b;
-        float Cr1 =  0.500 * keyColor.r - 0.419 * keyColor.g - 0.081 * keyColor.b;
-        float Cb2 = -0.169 * col.r      - 0.331 * col.g      + 0.500 * col.b;
-        float Cr2 =  0.500 * col.r      - 0.419 * col.g      - 0.081 * col.b;
-        float d = distance(vec2(Cb1, Cr1), vec2(Cb2, Cr2));
-        float alpha = smoothstep(similarity, similarity + smoothness, d);
-        if (alpha < 0.01) discard;
-        gl_FragColor = vec4(col.rgb, alpha);
+        if (col.a < 0.05) discard;
+        gl_FragColor = col;
       }
     `
 
     const texture = new THREE.VideoTexture(video)
     texture.minFilter = THREE.LinearFilter
     texture.magFilter = THREE.LinearFilter
+    texture.format = THREE.RGBAFormat
 
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        map:        { value: texture },
-        keyColor:   { value: new THREE.Color(0.0, 1.0, 0.0) }, // 초록색 기본값
-        similarity: { value: 0.3 },
-        smoothness: { value: 0.1 },
+        map: { value: texture },
       },
       vertexShader,
       fragmentShader,
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
+      premultipliedAlpha: false,
     })
 
     const geometry = new THREE.PlaneGeometry(1.5, 1.5)
