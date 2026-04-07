@@ -2,6 +2,7 @@ let initialized = false
 let mesh = null
 let placed = false
 let fixedPos = null
+let targetPos = null  // 이동 목표 (스무딩용)
 
 window.ecs.ready().then(() => {
   window.ecs.registerBehavior((world) => {
@@ -87,12 +88,12 @@ window.ecs.ready().then(() => {
         camera.getWorldDirection(camDir)
         camDir.y = 0
         camDir.normalize()
-        fixedPos = new THREE.Vector3(
+        targetPos = new THREE.Vector3(
           camPos.x + camDir.x * 15,
           1.5,
           camPos.z + camDir.z * 15
         )
-        mesh.position.copy(fixedPos)
+        if (!fixedPos) fixedPos = targetPos.clone()
       }
 
       document.addEventListener('touchstart', (e) => {
@@ -126,8 +127,17 @@ window.ecs.ready().then(() => {
       }, { passive: true })
     }
 
-    if (mesh && mesh.visible && fixedPos) {
+    if (mesh && mesh.visible && fixedPos && targetPos) {
+      // 이동 스무딩
+      fixedPos.lerp(targetPos, 0.08)
       mesh.position.copy(fixedPos)
+
+      // 빌보드: 항상 카메라를 향하되 y축만 회전
+      const camera = world.three.activeCamera
+      const camPos = new THREE.Vector3()
+      camera.getWorldPosition(camPos)
+      camPos.y = mesh.position.y
+      mesh.lookAt(camPos)
     }
   })
 })
