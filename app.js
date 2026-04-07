@@ -3,6 +3,12 @@ let mesh = null
 let placed = false
 let fixedPos = null
 
+// 흔들림 보정용
+const smoothCamPos = { x: 0, y: 0, z: 0 }
+let stabilizeReady = false
+const POS_SMOOTH = 0.15
+const DEADZONE = 0.003
+
 window.ecs.ready().then(() => {
   window.ecs.registerBehavior((world) => {
     const THREE = window.THREE
@@ -126,13 +132,37 @@ window.ecs.ready().then(() => {
     }
 
     if (mesh && mesh.visible && fixedPos) {
-      mesh.position.copy(fixedPos)
+      const camera = world.three.activeCamera
+      const rawCamPos = new THREE.Vector3()
+      camera.getWorldPosition(rawCamPos)
+
+      // 카메라 smoothing (deadzone 포함)
+      if (!stabilizeReady) {
+        smoothCamPos.x = rawCamPos.x
+        smoothCamPos.y = rawCamPos.y
+        smoothCamPos.z = rawCamPos.z
+        stabilizeReady = true
+      } else {
+        const dx = rawCamPos.x - smoothCamPos.x
+        const dy = rawCamPos.y - smoothCamPos.y
+        const dz = rawCamPos.z - smoothCamPos.z
+        const delta = Math.hypot(dx, dy, dz)
+        if (delta > DEADZONE) {
+          smoothCamPos.x += dx * POS_SMOOTH
+          smoothCamPos.y += dy * POS_SMOOTH
+          smoothCamPos.z += dz * POS_SMOOTH
+        }
+      }
+
+      // 카메라 노이즈(raw - smooth)를 mesh에 역으로 적용해 상쇄
+      mesh.position.set(
+        fixedPos.x - (rawCamPos.x - smoothCamPos.x),
+        fixedPos.y - (rawCamPos.y - smoothCamPos.y),
+        fixedPos.z - (rawCamPos.z - smoothCamPos.z)
+      )
 
       // 빌보드: y축만 카메라 향하게
-      const camera = world.three.activeCamera
-      const camPos = new THREE.Vector3()
-      camera.getWorldPosition(camPos)
-      const lookTarget = camPos.clone()
+      const lookTarget = rawCamPos.clone()
       lookTarget.y = mesh.position.y
       mesh.lookAt(lookTarget)
     }
