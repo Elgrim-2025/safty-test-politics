@@ -72,7 +72,7 @@ window.ecs.ready().then(() => {
         blendEquation: THREE.AddEquation,
       })
 
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), material)
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(15, 15), material)
       mesh.visible = false
       world.three.scene.add(mesh)
 
