@@ -10,8 +10,13 @@ window.ecs.ready().then(() => {
     if (!initialized) {
       initialized = true
 
+      // 카메라 준비되면 로딩 커버 제거
+      const cover = document.getElementById('loading-cover')
+      if (cover) cover.classList.add('hidden')
+      setTimeout(() => { if (cover) cover.remove() }, 600)
+
       const video = document.createElement('video')
-      video.src = 'assets/output-example-alpha.webm'
+      video.src = 'assets/example-final.mp4'
       video.loop = true
       video.muted = true
       video.playsInline = true
@@ -30,26 +35,41 @@ window.ecs.ready().then(() => {
       `
       const fragmentShader = `
         uniform sampler2D map;
+        uniform vec3 keyColor;
+        uniform float similarity;
+        uniform float smoothness;
         varying vec2 vUv;
         void main() {
           vec4 col = texture2D(map, vUv);
-          if (col.a < 0.05) discard;
-          gl_FragColor = col;
+          float Cb1 = -0.169 * keyColor.r - 0.331 * keyColor.g + 0.500 * keyColor.b;
+          float Cr1 =  0.500 * keyColor.r - 0.419 * keyColor.g - 0.081 * keyColor.b;
+          float Cb2 = -0.169 * col.r      - 0.331 * col.g      + 0.500 * col.b;
+          float Cr2 =  0.500 * col.r      - 0.419 * col.g      - 0.081 * col.b;
+          float d = distance(vec2(Cb1, Cr1), vec2(Cb2, Cr2));
+          float alpha = smoothstep(similarity, similarity + smoothness, d);
+          gl_FragColor = vec4(col.rgb, alpha);
         }
       `
       const texture = new THREE.VideoTexture(video)
       texture.minFilter = THREE.LinearFilter
       texture.magFilter = THREE.LinearFilter
-      texture.format = THREE.RGBAFormat
 
       const material = new THREE.ShaderMaterial({
-        uniforms: { map: { value: texture } },
+        uniforms: {
+          map:        { value: texture },
+          keyColor:   { value: new THREE.Color(0.0, 1.0, 0.0) },
+          similarity: { value: 0.4 },
+          smoothness: { value: 0.1 },
+        },
         vertexShader,
         fragmentShader,
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
-        premultipliedAlpha: false,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendEquation: THREE.AddEquation,
       })
 
       mesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), material)
