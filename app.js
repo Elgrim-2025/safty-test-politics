@@ -66,64 +66,23 @@ window.ecs.ready().then(() => {
     mesh.position.set(0, 0.75, -2)
     world.three.scene.add(mesh)
 
-    // --- 드래그 & 핀치 ---
+    // --- 터치한 바닥 위치로 재소환 ---
     const camera = world.three.activeCamera
-    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // y=0 평면
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
     const raycaster = new THREE.Raycaster()
-    const ndcToWorld = (x, y) => {
+
+    document.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length !== 1) return
+      const touch = e.changedTouches[0]
       const ndc = new THREE.Vector2(
-        (x / window.innerWidth) * 2 - 1,
-        -(y / window.innerHeight) * 2 + 1
+        (touch.clientX / window.innerWidth) * 2 - 1,
+        -(touch.clientY / window.innerHeight) * 2 + 1
       )
       raycaster.setFromCamera(ndc, camera)
-      const target = new THREE.Vector3()
-      raycaster.ray.intersectPlane(floorPlane, target)
-      return target
-    }
-
-    let dragActive = false
-    let dragOffsetX = 0
-    let dragOffsetZ = 0
-    let lastPinchDist = null
-
-    document.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        const hit = ndcToWorld(e.touches[0].clientX, e.touches[0].clientY)
-        if (hit) {
-          dragActive = true
-          dragOffsetX = mesh.position.x - hit.x
-          dragOffsetZ = mesh.position.z - hit.z
-        }
+      const hit = new THREE.Vector3()
+      if (raycaster.ray.intersectPlane(floorPlane, hit)) {
+        mesh.position.set(hit.x, 0.75, hit.z)
       }
-      if (e.touches.length === 2) {
-        dragActive = false
-        const dx = e.touches[0].clientX - e.touches[1].clientX
-        const dy = e.touches[0].clientY - e.touches[1].clientY
-        lastPinchDist = Math.hypot(dx, dy)
-      }
-    }, { passive: true })
-
-    document.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 1 && dragActive) {
-        const hit = ndcToWorld(e.touches[0].clientX, e.touches[0].clientY)
-        if (hit) {
-          mesh.position.x = hit.x + dragOffsetX
-          mesh.position.z = hit.z + dragOffsetZ
-        }
-      }
-      if (e.touches.length === 2 && lastPinchDist !== null) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX
-        const dy = e.touches[0].clientY - e.touches[1].clientY
-        const dist = Math.hypot(dx, dy)
-        const ratio = dist / lastPinchDist
-        mesh.scale.multiplyScalar(ratio)
-        lastPinchDist = dist
-      }
-    }, { passive: true })
-
-    document.addEventListener('touchend', () => {
-      dragActive = false
-      lastPinchDist = null
     }, { passive: true })
   })
 })
