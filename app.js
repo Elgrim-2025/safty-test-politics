@@ -1,20 +1,18 @@
 let initialized = false
 let mesh = null
 let placed = false
-let fixedPos = null  // 고정된 world 좌표
+let fixedPos = null
 
-// 카메라 스무딩용
 const smoothPos = { x: 0, y: 0, z: 0 }
 const smoothQuat = { x: 0, y: 0, z: 0, w: 1 }
 let camReady = false
-const SMOOTH = 0.15  // 낮을수록 더 부드러움 (0.05~0.2)
+const SMOOTH = 0.05  // 매우 약한 스무딩 — SLAM 간섭 최소화
 
 window.ecs.ready().then(() => {
   window.ecs.registerBehavior((world) => {
+    // --- 카메라 스무딩 (매 프레임, 아주 약하게) ---
     const THREE = window.THREE
     const camera = world.three.activeCamera
-
-    // --- 카메라 포즈 스무딩 (매 프레임) ---
     const rawPos = new THREE.Vector3()
     const rawQuat = new THREE.Quaternion()
     camera.getWorldPosition(rawPos)
@@ -29,34 +27,26 @@ window.ecs.ready().then(() => {
       smoothPos.x += (rawPos.x - smoothPos.x) * SMOOTH
       smoothPos.y += (rawPos.y - smoothPos.y) * SMOOTH
       smoothPos.z += (rawPos.z - smoothPos.z) * SMOOTH
-      // slerp quaternion
-      const dot = smoothQuat.x * rawQuat.x + smoothQuat.y * rawQuat.y +
-                  smoothQuat.z * rawQuat.z + smoothQuat.w * rawQuat.w
-      const qx = dot < 0 ? -rawQuat.x : rawQuat.x
-      const qy = dot < 0 ? -rawQuat.y : rawQuat.y
-      const qz = dot < 0 ? -rawQuat.z : rawQuat.z
-      const qw = dot < 0 ? -rawQuat.w : rawQuat.w
-      smoothQuat.x += (qx - smoothQuat.x) * SMOOTH
-      smoothQuat.y += (qy - smoothQuat.y) * SMOOTH
-      smoothQuat.z += (qz - smoothQuat.z) * SMOOTH
-      smoothQuat.w += (qw - smoothQuat.w) * SMOOTH
-      // normalize
+      const dot = smoothQuat.x*rawQuat.x + smoothQuat.y*rawQuat.y + smoothQuat.z*rawQuat.z + smoothQuat.w*rawQuat.w
+      const sx = dot < 0 ? -rawQuat.x : rawQuat.x
+      const sy = dot < 0 ? -rawQuat.y : rawQuat.y
+      const sz = dot < 0 ? -rawQuat.z : rawQuat.z
+      const sw = dot < 0 ? -rawQuat.w : rawQuat.w
+      smoothQuat.x += (sx - smoothQuat.x) * SMOOTH
+      smoothQuat.y += (sy - smoothQuat.y) * SMOOTH
+      smoothQuat.z += (sz - smoothQuat.z) * SMOOTH
+      smoothQuat.w += (sw - smoothQuat.w) * SMOOTH
       const len = Math.hypot(smoothQuat.x, smoothQuat.y, smoothQuat.z, smoothQuat.w)
-      smoothQuat.x /= len; smoothQuat.y /= len
-      smoothQuat.z /= len; smoothQuat.w /= len
-
+      smoothQuat.x /= len; smoothQuat.y /= len; smoothQuat.z /= len; smoothQuat.w /= len
       camera.position.set(smoothPos.x, smoothPos.y, smoothPos.z)
       camera.quaternion.set(smoothQuat.x, smoothQuat.y, smoothQuat.z, smoothQuat.w)
     }
 
-    // --- 초기화 (최초 1회) ---
     if (!initialized) {
       initialized = true
 
-      // iOS에서 흰 배경 방지
       const renderer = world.three.renderer
       renderer.setClearColor(0x000000, 0)
-      renderer.setPixelRatio(window.devicePixelRatio)
 
       const video = document.createElement('video')
       video.src = 'assets/output-example-alpha.webm'
@@ -104,13 +94,15 @@ window.ecs.ready().then(() => {
       mesh.visible = false
       world.three.scene.add(mesh)
 
+      const camera = world.three.activeCamera
       const hint = document.getElementById('ui-hint')
       let lastPinchDist = null
 
       const placeInFront = () => {
-        const camPos = new THREE.Vector3(smoothPos.x, smoothPos.y, smoothPos.z)
-        const camDir = new THREE.Vector3(0, 0, -1)
-          .applyQuaternion(new THREE.Quaternion(smoothQuat.x, smoothQuat.y, smoothQuat.z, smoothQuat.w))
+        const camPos = new THREE.Vector3()
+        const camDir = new THREE.Vector3()
+        camera.getWorldPosition(camPos)
+        camera.getWorldDirection(camDir)
         camDir.y = 0
         camDir.normalize()
         fixedPos = new THREE.Vector3(
@@ -152,7 +144,6 @@ window.ecs.ready().then(() => {
       }, { passive: true })
     }
 
-    // mesh는 fixedPos에 고정 (매 프레임 덮어써서 SLAM drift 방지)
     if (mesh && mesh.visible && fixedPos) {
       mesh.position.copy(fixedPos)
     }
